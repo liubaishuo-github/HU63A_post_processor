@@ -1,69 +1,111 @@
-global block_number, gl, last_pch_point, last_apt_point, feedrate
+#global block_number, gl, last_pch_point, last_apt_point, feedrate
 block_number = 1
 gl = 9.35
+feedrate = -999
+tool_number = 0
+status_g94_g93_stack = []
+status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':0, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':0}
+status_under_last = {'G90':0, 'G54':0, 'G0':0, 'G1':0, 'G43':0, 'G94':0, 'G93':0, 'F':0, 'H':0}
 
 
-import re
+import re, copy, math
 
 class Point():
-    x , y, z = 0, 0, 0
-    def x_str(self):
-        return 'X' + str(round(self.x,4))
-    def y_str(self):
-        return 'Y' + str(round(self.y,4))
-    def z_str(self):
-        return 'Z' + str(round(self.z,4))
-    def print_point(self):
-        return self.x_str() + self.y_str() + self.z_str()
+    def __init__(self):
+        self.x , self.y, self.z = 9999.0, 9999.0, 9999.0
 class Normal():
     i, j, k = 0.0, 0.0, 0.0
 class Angle():
-    b, c = 0.0, 0.0
-    def b_str(self):
-        return 'B' + str(round(self.b,3))
-    def c_str(self):
-        return 'C' + str(round(self.c,3))
-    def print_angle(self):
-        return self.b_str() + self.c_str()
+    def __init__(self):
+        self.b, self.c = 9999.0, 0.0
 class Apt_point():
-    point = Point()
-    normal = Normal()
+    def __init__(self):
+        self.point = Point()
+        self.normal = Normal()
     def extract_point_and_normal(self, apt_txt):
         temp = re.findall('-?\d+\.\d+', apt_txt)
         self.point.x, self.point.y, self.point.z, \
             self.normal.i, self.normal.j, self.normal.k= \
             list(map(float,temp))
-class G_code():
-    status_G90 = 0
-    status_G54 = 0
-    status_G0 = 0
-    status_G1 = 0
-    status_G43 = 0
-    G90, G54, G0, G1, G43 = 'G90', 'G54', 'G0', 'G1', 'G43'
 
-    def print_G90(self):
-        if self.status_G90 == 0:
-            self.status_G90 = 1
-            return 'G90'
-    def print_G54(self):
-        pass
-    def print_G0(self):
-        pass
-    def print_G1(self):
-        pass
-    def print_G43(self):
-        pass
 
 class Pch_point():
-    g_code = G_code()
-    point = Point()
-    angle = Angle()
-    feedrate = 0
+    def __init__(self):
+        self.point = Point()
+        self.angle = Angle()
+    @staticmethod
+    def print_feedrate():
+        if status_should_be['G94'] == 1:
+            return str(feedrate)
+        elif status_should_be['G93'] == 1:
+            #print(current_apt_point.point.__dict__)
+            #print(last_apt_point.point.__dict__)
+            distance = math.sqrt(math.pow(current_apt_point.point.x - last_apt_point.point.x, 2) + \
+                                math.pow(current_apt_point.point.y - last_apt_point.point.y, 2) + \
+                                math.pow(current_apt_point.point.z - last_apt_point.point.z, 2))
+            inverse_feedrate = round(feedrate / distance, 1)
+            return str(inverse_feedrate)
+    def print_point(self):
+        if self.point.x == last_pch_point.point.x:
+            x_str = ''
+        else:
+            x_str = 'X' + str(self.point.x)
+        if self.point.y == last_pch_point.point.y:
+            y_str = ''
+        else:
+            y_str = 'Y' + str(self.point.y)
+        if self.point.z == last_pch_point.point.z:
+            z_str = ''
+        else:
+            z_str = 'Z' + str(self.point.z)
+        if self.angle.b == last_pch_point.angle.b:
+            b_str = ''
+        else:
+            b_str = 'B' + str(self.angle.b)
+        if self.angle.c == last_pch_point.angle.c and self.angle.c != 0:
+            c_str = ''
+            '''This is to avoid the first point'C is just 0'''
+        else:
+            c_str = 'C' + str(self.angle.c)
+        return x_str + y_str + z_str + b_str + c_str
+    def print_g_code(self):
+        global status_under_last
+        g_code_str = ''
+        f_h_str = ''
+        for key in status_should_be.keys():
+            if status_should_be[key] == 1 and status_under_last[key] == 0:
+                if key != 'F' or status_should_be['G93'] == 0:
+                    status_under_last[key] = 1
+                if key == 'F':
+                    f_h_str += 'F' + self.print_feedrate()
+                elif key == 'H':
+                    f_h_str =+ key
+                else:
+                    g_code_str += key
+
+        return g_code_str, f_h_str
+
+def updata_g_code_status():
+    def change_status(if_one, to_be_zero):
+        global status_under_last
+        if status_should_be[if_one] == 1:
+            status_under_last[to_be_zero] = 0
+        if status_should_be[to_be_zero] == 1:
+            status_under_last[if_one] =0
+    change_status('G0', 'G1')
+    change_status('G94', 'G93')
+
+    #if status_should_be['G93'] == 0:
+    #    status_should_be['G94'] = 1
+
+
+
+
 
 
 
 def GOTO(apt_str):
-    global last_apt_point, last_pch_point
+    global last_apt_point, last_pch_point, current_apt_point
     def transf(apt_point):
         from numpy import mat
         from math import sin, cos, radians, degrees, \
@@ -141,10 +183,7 @@ def GOTO(apt_str):
             c, b = nearest_c(c_pending2), b_pending2
         pch_xyz = translation_z(-37.3964) * rot_y(-b) * rot_x(c) *translation_x(3) * apt_plus_gl_point
         x, y, z = pch_xyz[0,0], pch_xyz[1,0], pch_xyz[2,0]
-        return x, y, z, degrees(b), degrees(c)
-
-    def print_pch(current_pch_point):
-        pass
+        return round(x,4), round(y,4), round(z,4), round(degrees(b),3), round(degrees(c),3)
 
 
     current_apt_point = Apt_point()
@@ -152,25 +191,67 @@ def GOTO(apt_str):
     current_pch_point = Pch_point()
 
 
-    #print(';=====')
-    #print(last_pch_point.angle.c)
-
-
+    #print(last_pch_point.point.__dict__)
+    #print(last_pch_point.angle.__dict__)
     current_pch_point.point.x, current_pch_point.point.y, current_pch_point.point.z\
     ,current_pch_point.angle.b,current_pch_point.angle.c = transf(current_apt_point)
-    print(current_pch_point.point.__dict__)
-    print(current_pch_point.angle.__dict__)
-    print('========')
+    #print(current_pch_point.point.__dict__)
+    #print(current_pch_point.angle.__dict__)
+    #print(last_pch_point.point.__dict__)
+    #print(last_pch_point.angle.__dict__)
+
+    #print('should',status_should_be)
+    #print('under ',status_under_last)
+    temp = current_pch_point.print_g_code()
+
+    print(temp[0] + current_pch_point.print_point() + temp[1])
+    updata_g_code_status()
+    #print('under ',status_under_last)
+    #print('========')
     last_apt_point = current_apt_point
     last_pch_point = current_pch_point
-    return 1, 88
 
+
+
+    return 1, 88
+def FEDRAT(apt_str):
+    global feedrate, status_should_be
+    feedrate = round(float(re.findall('\d+\.\d+', apt_str)[0]),3)
+    status_should_be['F'] = 1
+    status_should_be['G1'] = 1
+    status_should_be['G0'] = 0
+    if status_g94_g93_stack != []:
+        status_should_be[status_g94_g93_stack.pop()] = 1
+
+    status_under_last['F'] = 0
+    return 0, ''
+def RAPID(apt_str):
+    global status_should_be, status_g94_g93_stack
+    status_should_be['F'] = 0
+    status_should_be['G0'] = 1
+    status_should_be['G1'] = 0
+    if status_should_be['G93'] == 1:
+        status_g94_g93_stack.append('G93')
+    elif status_should_be['G94'] == 1:
+        status_g94_g93_stack.append('G94')
+    status_should_be['G93'] = 0
+    status_should_be['G94'] = 0
+    return 0, ''
+def INVERSE(apt_str):
+    global status_should_be
+    if re.search('ON',apt_str):
+        status_should_be['G93'] = 1
+        status_should_be['G94'] = 0
+    elif re.search('OFF',apt_str):
+        status_should_be['G93'] = 0
+        status_should_be['G94'] = 1
+    return 0, ''
 
 
 def main(apt_txt):
     #print(';=====')
     #print(last_pch_point.angle.c)
-    ppword_list = ['GOTO', 'PPRINT', 'RAPID', 'FEEDOVER', 'FEDRAT', 'STOP',\
+    ppword_list = ['GOTO', 'RAPID', 'INVERSE', 'FEDRAT', 'STOP',\
                     'SPINDLE']
     pch_txt = []
 

@@ -1,10 +1,28 @@
-kk = 3
+import copy
+#global point2
 
-print('it is test5.py','kk= ',kk)
+num = 1
 
 
 def a():
-    print('it is in test5.py function')
+    num = 3
+    def b():
+        num = 5
+        def c():
+            global num
+            print('c',num)
+            num = 10
+            print('c',num)
+        print('b,before c',num)
+        c()
+        print('b,after c',num)
+    print('a,before b',num)
+    b()
+    print('a,after b',num)
 
-class B():
-    print('iiiiii')
+
+print('main, before a',num)
+
+
+a()
+print('main, after a',num)
