@@ -17,7 +17,7 @@ def txt_connect(txt_before):
 import os
 
 
-apt_filename = input("Input the apt file name:")
+apt_filename = input("Input the apt file name:").strip()
 
 dir = os.getcwd()
 

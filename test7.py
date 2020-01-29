@@ -1,7 +1,8 @@
-a = []
-b = ['a']
 
-if a != []:
-    print('full')
-else:
-    print('empty')
+import re
+
+
+print('sdfsdf')
+
+
+a = '32323'

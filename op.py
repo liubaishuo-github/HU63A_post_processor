@@ -1,10 +1,10 @@
 #global block_number, gl, last_pch_point, last_apt_point, feedrate
-block_number = 1
+block_number = 0
 gl = 9.35
-feedrate = -999
 tool_number = 0
+feedrate = -999
 status_g94_g93_stack = []
-status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':0, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':0}
+status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':0, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':1}
 status_under_last = {'G90':0, 'G54':0, 'G0':0, 'G1':0, 'G43':0, 'G94':0, 'G93':0, 'F':0, 'H':0}
 
 
@@ -12,9 +12,10 @@ import re, copy, math
 
 class Point():
     def __init__(self):
-        self.x , self.y, self.z = 9999.0, 9999.0, 9999.0
+        self.x , self.y, self.z = 99.0, 99.0, 99.0
 class Normal():
-    i, j, k = 0.0, 0.0, 0.0
+    def __init__(self):
+        self.i, self.j, self.k = 0.0, 0.0, 0.0
 class Angle():
     def __init__(self):
         self.b, self.c = 9999.0, 0.0
@@ -79,30 +80,32 @@ class Pch_point():
                 if key == 'F':
                     f_h_str += 'F' + self.print_feedrate()
                 elif key == 'H':
-                    f_h_str =+ key
+                    f_h_str += key + str(tool_number)
                 else:
                     g_code_str += key
 
         return g_code_str, f_h_str
 
 def updata_g_code_status():
-    def change_status(if_one, to_be_zero):
+    def clear_status(if_one, to_be_zero):
         global status_under_last
         if status_should_be[if_one] == 1:
             status_under_last[to_be_zero] = 0
         if status_should_be[to_be_zero] == 1:
             status_under_last[if_one] =0
-    change_status('G0', 'G1')
-    change_status('G94', 'G93')
+    clear_status('G0', 'G1')
+    clear_status('G94', 'G93')
+    status_should_be['G0'] = 0
+    status_should_be['G1'] = 1
+    if status_g94_g93_stack != []:
+        status_should_be[status_g94_g93_stack.pop()] = 1
+    if status_should_be['G93'] ==1:
+        status_should_be['F'] = 1
 
-    #if status_should_be['G93'] == 0:
-    #    status_should_be['G94'] = 1
-
-
-
-
-
-
+def print_N_number():
+    global block_number
+    block_number += 1
+    return 'N' + str(block_number)
 
 def GOTO(apt_str):
     global last_apt_point, last_pch_point, current_apt_point
@@ -185,43 +188,31 @@ def GOTO(apt_str):
         x, y, z = pch_xyz[0,0], pch_xyz[1,0], pch_xyz[2,0]
         return round(x,4), round(y,4), round(z,4), round(degrees(b),3), round(degrees(c),3)
 
-
     current_apt_point = Apt_point()
     current_apt_point.extract_point_and_normal(apt_str)
+
     current_pch_point = Pch_point()
 
-
-    #print(last_pch_point.point.__dict__)
-    #print(last_pch_point.angle.__dict__)
     current_pch_point.point.x, current_pch_point.point.y, current_pch_point.point.z\
     ,current_pch_point.angle.b,current_pch_point.angle.c = transf(current_apt_point)
-    #print(current_pch_point.point.__dict__)
-    #print(current_pch_point.angle.__dict__)
-    #print(last_pch_point.point.__dict__)
-    #print(last_pch_point.angle.__dict__)
 
-    #print('should',status_should_be)
-    #print('under ',status_under_last)
     temp = current_pch_point.print_g_code()
 
-    print(temp[0] + current_pch_point.print_point() + temp[1])
+    output_str = print_N_number() + temp[0] + current_pch_point.print_point() + temp[1]
     updata_g_code_status()
-    #print('under ',status_under_last)
-    #print('========')
+
     last_apt_point = current_apt_point
     last_pch_point = current_pch_point
 
+    return 1, output_str
 
-
-    return 1, 88
 def FEDRAT(apt_str):
-    global feedrate, status_should_be
+    global feedrate, status_should_be, status_under_last
     feedrate = round(float(re.findall('\d+\.\d+', apt_str)[0]),3)
     status_should_be['F'] = 1
     status_should_be['G1'] = 1
     status_should_be['G0'] = 0
-    if status_g94_g93_stack != []:
-        status_should_be[status_g94_g93_stack.pop()] = 1
+
 
     status_under_last['F'] = 0
     return 0, ''
@@ -246,13 +237,39 @@ def INVERSE(apt_str):
         status_should_be['G93'] = 0
         status_should_be['G94'] = 1
     return 0, ''
+def LOADTOOL(apt_str):
+    global tool_number, feedrate, status_g94_g93_stack, status_should_be, status_under_last, last_pch_point, last_apt_point, gl
+    tool_number = re.search('(\d+)( *),( *)(\d+\.\d+|\d+|\.\d+)', apt_str).group(1)
+    gl =    float(re.search('(\d+)( *),( *)(\d+\.\d+|\d+|\.\d+)', apt_str).group(4))
+    feedrate = -999
+    status_g94_g93_stack = []
+    status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':0, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':1}
+    status_under_last = {'G90':0, 'G54':0, 'G0':0, 'G1':0, 'G43':0, 'G94':0, 'G93':0, 'F':0, 'H':0}
+    last_pch_point = Pch_point()
+    last_apt_point = Apt_point()
+    output_str = [print_N_number() + 'T' + tool_number, print_N_number() + 'M6']
+
+    return 2, output_str
+def SPINDLE(apt):
+    if re.search('STOP',apt):
+        a = 'M5'
+        return 1, print_N_number() + a
+
+    rpm = re.search('\d+', apt).group()
+    if re.search('CLW', apt) and not(re.search('CCLW', apt)):
+        dir = 'M3'
+    elif re.search('CCLW', apt):
+        dir = 'M4'
+
+    a = '{}S{}'.format(dir, rpm)
+    return 1, print_N_number() + a
 
 
 def main(apt_txt):
     #print(';=====')
     #print(last_pch_point.angle.c)
     ppword_list = ['GOTO', 'RAPID', 'INVERSE', 'FEDRAT', 'STOP',\
-                    'SPINDLE']
+                    'SPINDLE', 'LOADTOOL']
     pch_txt = []
 
     for i in apt_txt:
@@ -270,7 +287,10 @@ def main(apt_txt):
                 elif temp[0] ==2:
                     pch_txt.extend(temp[1])
                 break
-
+    pch_txt.append('M30')
+    for i in pch_txt:
+        print(i)
+    return pch_txt
 
 
 last_pch_point = Pch_point()
