@@ -28,8 +28,6 @@ class Apt_point():
         self.point.x, self.point.y, self.point.z, \
             self.normal.i, self.normal.j, self.normal.k= \
             list(map(float,temp))
-
-
 class Pch_point():
     def __init__(self):
         self.point = Point()
@@ -44,7 +42,7 @@ class Pch_point():
             distance = math.sqrt(math.pow(current_apt_point.point.x - last_apt_point.point.x, 2) + \
                                 math.pow(current_apt_point.point.y - last_apt_point.point.y, 2) + \
                                 math.pow(current_apt_point.point.z - last_apt_point.point.z, 2))
-            inverse_feedrate = round(feedrate / distance, 1)
+            inverse_feedrate = min(round(feedrate / distance, 3), 9999.999)
             return str(inverse_feedrate)
     def print_point(self):
         if self.point.x == last_pch_point.point.x:
@@ -205,7 +203,6 @@ def GOTO(apt_str):
     last_pch_point = current_pch_point
 
     return 1, output_str
-
 def FEDRAT(apt_str):
     global feedrate, status_should_be, status_under_last
     feedrate = round(float(re.findall('\d+\.\d+', apt_str)[0]),3)
@@ -263,13 +260,21 @@ def SPINDLE(apt):
 
     a = '{}S{}'.format(dir, rpm)
     return 1, print_N_number() + a
-
+def STOP(apt):
+    return 1, print_N_number() + 'M0'
+def SHUI(apt):
+    if re.search('KAI',apt):
+        a = 'M20'
+        return 1, print_N_number() + a
+    if re.search('GUAN', apt):
+        a = 'M9'
+        return 1, print_N_number() + a
 
 def main(apt_txt):
     #print(';=====')
     #print(last_pch_point.angle.c)
     ppword_list = ['GOTO', 'RAPID', 'INVERSE', 'FEDRAT', 'STOP',\
-                    'SPINDLE', 'LOADTOOL']
+                    'SPINDLE', 'LOADTOOL', 'SHUI']
     pch_txt = []
 
     for i in apt_txt:
@@ -287,7 +292,7 @@ def main(apt_txt):
                 elif temp[0] ==2:
                     pch_txt.extend(temp[1])
                 break
-    pch_txt.append('M30')
+    pch_txt.extend(['T0','M6','M30'])
     for i in pch_txt:
         print(i)
     return pch_txt
