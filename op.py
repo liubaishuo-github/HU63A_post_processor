@@ -4,7 +4,7 @@ gl = 9.35
 tool_number = 0
 feedrate = -999
 status_g94_g93_stack = []
-status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':0, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':1}
+status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':1, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':1}
 status_under_last = {'G90':0, 'G54':0, 'G0':0, 'G1':0, 'G43':0, 'G94':0, 'G93':0, 'F':0, 'H':0}
 
 
@@ -197,6 +197,7 @@ def GOTO(apt_str):
     temp = current_pch_point.print_g_code()
 
     output_str = print_N_number() + temp[0] + current_pch_point.print_point() + temp[1]
+
     updata_g_code_status()
 
     last_apt_point = current_apt_point
@@ -209,8 +210,6 @@ def FEDRAT(apt_str):
     status_should_be['F'] = 1
     status_should_be['G1'] = 1
     status_should_be['G0'] = 0
-
-
     status_under_last['F'] = 0
     return 0, ''
 def RAPID(apt_str):
@@ -240,7 +239,7 @@ def LOADTOOL(apt_str):
     gl =    float(re.search('(\d+)( *),( *)(\d+\.\d+|\d+|\.\d+)', apt_str).group(4))
     feedrate = -999
     status_g94_g93_stack = []
-    status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':0, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':1}
+    status_should_be =  {'G90':1, 'G54':1, 'G0':0, 'G1':1, 'G43':1, 'G94':1, 'G93':0, 'F':0, 'H':1}
     status_under_last = {'G90':0, 'G54':0, 'G0':0, 'G1':0, 'G43':0, 'G94':0, 'G93':0, 'F':0, 'H':0}
     last_pch_point = Pch_point()
     last_apt_point = Apt_point()
