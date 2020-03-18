@@ -14,14 +14,15 @@ def txt_connect(txt_before):
     return txt
 
 
-import os
+import os, re
 
-
-apt_filename = input("Input the apt file name:").strip()
+print('HU63A post processor. Developed by Liu Baishuo')
+print('If any question, contact liubaishuo@live.com')
+apt_filename = re.search('\d+', input("Input the apt file name:").strip()).group()
 
 dir = os.getcwd()
 
-filename = rf"{dir}\\{apt_filename}.aptsource"
+filename = rf"{dir}\\CVZ{apt_filename}.aptsource"
 
 file = open(filename, encoding='utf-8-sig')
 txt_temp = file.readlines()
