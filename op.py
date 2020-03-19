@@ -95,8 +95,8 @@ def updata_g_code_status():
     clear_status('G94', 'G93')
     status_should_be['G0'] = 0
     status_should_be['G1'] = 1
-    if status_g94_g93_stack != []:
-        status_should_be[status_g94_g93_stack.pop()] = 1
+    #if status_g94_g93_stack != []:
+    #    status_should_be[status_g94_g93_stack.pop()] = 1
     if status_should_be['G93'] ==1:
         status_should_be['F'] = 1
 
@@ -221,8 +221,8 @@ def RAPID(apt_str):
         status_g94_g93_stack.append('G93')
     elif status_should_be['G94'] == 1:
         status_g94_g93_stack.append('G94')
-    status_should_be['G93'] = 0
-    status_should_be['G94'] = 0
+    #status_should_be['G93'] = 0
+    #status_should_be['G94'] = 0
     return 0, ''
 def INVERSE(apt_str):
     global status_should_be
